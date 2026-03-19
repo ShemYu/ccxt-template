@@ -18,19 +18,22 @@ from crypto_trade_mvp.logger import logger
 WS_URL = "wss://ws.lightstream.bitflyer.com/json-rpc"
 
 
-async def _fetch_history(exchange, symbol: str, builder: CandleBuilder, target_candles: int) -> None:
-    """Page through REST executions to warm up the CandleBuilder with history.
+async def _fetch_history(
+    exchange, symbol: str, builder: CandleBuilder, target_candles: int
+) -> list:
+    """Page through REST executions, build historical candles, and return them.
 
-    Feeds trades in chronological order (oldest first) so the builder
-    builds candles correctly. Strategy callbacks are suppressed during
-    warm-up — the builder's on_candle_closed is replaced temporarily.
+    Feeds trades oldest-first so the builder accumulates candles correctly.
+    Callbacks are suppressed during feed; the completed candles are returned
+    so the caller can seed its own state before WS starts.
     """
+    from crypto_trade_mvp.models.candle import Candle
+
     interval_ms = builder._interval_ms
     needed_ms = target_candles * interval_ms
     cutoff_ms = int(time.time() * 1000) - needed_ms
 
-    # Collect all trades first, then feed oldest-first.
-    # bitFlyer paginates backwards using the minimum trade id as `before`.
+    # Collect trades, paginating backwards with min trade id.
     all_trades: list[dict] = []
     before_id = None
 
@@ -59,15 +62,17 @@ async def _fetch_history(exchange, symbol: str, builder: CandleBuilder, target_c
 
         await asyncio.sleep(0.6)  # ~100 req/min, well within 500/5min limit
 
-    # Feed oldest-first with callbacks suppressed
+    # Feed oldest-first, collect closed candles without triggering strategy
+    history_candles: list[Candle] = []
     original_callback = builder._on_candle_closed
-    builder._on_candle_closed = lambda c: None
+    builder._on_candle_closed = lambda c: history_candles.append(c)
 
     for t in reversed(all_trades):
         builder.feed(t["price"], t["amount"], t["timestamp"])
 
     builder._on_candle_closed = original_callback
-    logger.info(f"History warm-up done: fed {len(all_trades)} trades, builder ready")
+    logger.info(f"History warm-up done: {len(history_candles)} candles from {len(all_trades)} trades")
+    return history_candles
 
 
 async def stream(
@@ -96,7 +101,9 @@ async def stream(
     builder = CandleBuilder(symbol=symbol, timeframe=timeframe, on_candle_closed=on_candle_closed)
 
     logger.info(f"Warming up history ({history_candles} candles)...")
-    await _fetch_history(exchange, symbol, builder, history_candles)
+    seeded = await _fetch_history(exchange, symbol, builder, history_candles)
+    for candle in seeded:
+        on_candle_closed(candle)
 
     # Build the full channel -> handler map
     handlers: dict[str, Callable] = {executions_channel: _make_executions_handler(builder)}
