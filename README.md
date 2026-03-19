@@ -39,23 +39,23 @@ uv sync
 cp .env.example .env
 
 # 4. Initialize the database
-python -m crypto_trade_mvp.cli.main init-db
+uv run python -m crypto_trade_mvp.cli.main init-db
 ```
 
 ## Commands
 
 ```bash
 # Fetch OHLCV candles and store to SQLite
-python -m crypto_trade_mvp.cli.main fetch-data --symbol BTC/JPY --timeframe 5m --limit 300
+uv run python -m crypto_trade_mvp.cli.main fetch-data --symbol BTC/JPY --timeframe 5m --limit 300
 
 # Run strategy on stored candles and generate signals
-python -m crypto_trade_mvp.cli.main run-strategy --symbol BTC/JPY --timeframe 5m --strategy sma_cross
+uv run python -m crypto_trade_mvp.cli.main run-strategy --symbol BTC/JPY --timeframe 5m --strategy sma_cross
 
 # Run a backtest on historical data
-python -m crypto_trade_mvp.cli.main backtest --symbol BTC/JPY --timeframe 5m --strategy sma_cross
+uv run python -m crypto_trade_mvp.cli.main backtest --symbol BTC/JPY --timeframe 5m --strategy sma_cross
 
 # Start paper trading loop (polls every N seconds)
-python -m crypto_trade_mvp.cli.main paper-trade --symbol BTC/JPY --timeframe 5m --interval 60
+uv run python -m crypto_trade_mvp.cli.main paper-trade --symbol BTC/JPY --timeframe 5m --interval 60
 ```
 
 ## Current Limitations
