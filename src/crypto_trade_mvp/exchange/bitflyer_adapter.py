@@ -2,6 +2,8 @@ from crypto_trade_mvp.exchange.ccxt_client import CCXTClient
 
 
 class BitflyerAdapter(CCXTClient):
-    """bitFlyer-specific adapter. Inherits CCXTClient for now.
-    Override methods here if bitFlyer requires special handling."""
-    pass
+    """bitFlyer-specific adapter. bitFlyer does not support fetchOHLCV,
+    so candles are built by resampling raw trade executions."""
+
+    def fetch_ohlcv(self, symbol: str, timeframe: str, limit: int) -> list[list]:
+        return self.build_ohlcv_from_trades(symbol, timeframe, limit)
