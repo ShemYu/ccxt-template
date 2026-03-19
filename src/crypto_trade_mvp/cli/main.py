@@ -1,3 +1,4 @@
+import asyncio
 import time
 import typer
 import pandas as pd
@@ -7,6 +8,8 @@ from crypto_trade_mvp.data.schema import init_db
 from crypto_trade_mvp.data.fetcher import DataFetcher
 from crypto_trade_mvp.data.repository import Repository
 from crypto_trade_mvp.exchange.bitflyer_adapter import BitflyerAdapter
+from crypto_trade_mvp.exchange.realtime import stream
+from crypto_trade_mvp.models.candle import Candle
 from crypto_trade_mvp.strategy.sma_cross import SMACrossStrategy
 from crypto_trade_mvp.execution.simulator import PaperBroker
 from crypto_trade_mvp.portfolio.manager import PortfolioManager
@@ -111,43 +114,57 @@ def backtest(
 def paper_trade(
     symbol: str = typer.Option(settings.default_symbol),
     timeframe: str = typer.Option(settings.default_timeframe),
-    interval: int = typer.Option(60, help="Poll interval in seconds"),
-    limit: int = typer.Option(300),
 ):
-    """Run paper trading loop, polling on an interval."""
-    init_db()
+    """Run paper trading loop driven by bitFlyer Realtime API."""
+    from crypto_trade_mvp.data.schema import init_db as _init_db
+    _init_db()
+
     adapter = BitflyerAdapter()
-    fetcher = DataFetcher(adapter)
     repo = Repository()
     broker = PaperBroker(symbol=symbol)
     pm = PortfolioManager(broker=broker, repo=repo)
     strat = SMACrossStrategy()
+    candle_window: list[Candle] = []
 
-    typer.echo(f"Starting paper trading for {symbol} [{timeframe}] every {interval}s")
+    def on_candle_closed(candle: Candle) -> None:
+        repo.save_candles([candle])
+        candle_window.append(candle)
+        if len(candle_window) > 300:
+            candle_window.pop(0)
 
-    while True:
-        try:
-            candles, df = fetcher.fetch(symbol, timeframe, limit)
-            repo.save_candles(candles)
+        if len(candle_window) < 20:
+            logger.info(f"Warming up: {len(candle_window)}/20 candles")
+            return
 
-            signal = strat.generate_signal(df)
-            current_price = df.iloc[-1]["close"]
-            broker.update_unrealized_pnl(current_price)
+        df = pd.DataFrame([
+            (c.timestamp, c.open, c.high, c.low, c.close, c.volume)
+            for c in candle_window
+        ], columns=["timestamp", "open", "high", "low", "close", "volume"])
 
-            if signal == SignalType.BUY:
-                order = broker.place_order("buy", current_price)
-                if order:
-                    repo.save_order(order)
-            elif signal == SignalType.SELL:
-                order = broker.place_order("sell", current_price)
-                if order:
-                    repo.save_order(order)
+        signal = strat.generate_signal(df)
+        current_price = candle_window[-1].close
+        broker.update_unrealized_pnl(current_price)
 
-            pm.snapshot()
-        except Exception as e:
-            logger.error(f"Error in paper trading loop: {e}")
+        if signal == SignalType.BUY:
+            order = broker.place_order("buy", current_price)
+            if order:
+                repo.save_order(order)
+        elif signal == SignalType.SELL:
+            order = broker.place_order("sell", current_price)
+            if order:
+                repo.save_order(order)
 
-        time.sleep(interval)
+        pm.snapshot()
+        typer.echo(f"[{candle_window[-1].timestamp}] signal={signal.value} price={current_price}")
+
+    typer.echo(f"Starting realtime paper trading for {symbol} [{timeframe}]")
+    asyncio.run(stream(
+        exchange=adapter._exchange,
+        symbol=symbol,
+        timeframe=timeframe,
+        on_candle_closed=on_candle_closed,
+        history_candles=25,
+    ))
 
 
 @app.command()
