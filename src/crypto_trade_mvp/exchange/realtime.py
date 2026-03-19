@@ -10,7 +10,6 @@ from crypto_trade_mvp.exchange.candle_builder import CandleBuilder
 from crypto_trade_mvp.logger import logger
 
 WS_URL = "wss://ws.lightstream.bitflyer.com/json-rpc"
-PRODUCT_CODE = "BTC_JPY"
 
 
 async def _fetch_history(exchange, symbol: str, builder: CandleBuilder, target_candles: int) -> None:
@@ -70,39 +69,66 @@ async def stream(
     symbol: str,
     timeframe: str,
     on_candle_closed: Callable,
-    history_candles: int = 30,
+    history_candles: int = 25,
+    extra_channels: dict[str, Callable] | None = None,
 ) -> None:
-    """
-    1. Warm up with REST history to fill `history_candles` worth of data.
-    2. Open WebSocket and stream live executions into the same CandleBuilder.
+    """Stream bitFlyer Realtime API over a single WebSocket connection.
 
-    `on_candle_closed` is called each time a candle boundary is crossed.
+    All channel subscriptions share one TCP connection. `extra_channels`
+    maps channel name -> handler callable for any additional subscriptions
+    (e.g. ticker, board). The executions channel for `symbol` is always
+    included and drives the CandleBuilder.
+
+    Workflow:
+    1. Warm up with REST history to fill `history_candles` worth of candles.
+    2. Open one WebSocket, subscribe to all channels in a single session.
+    3. Dispatch incoming messages by channel name to the correct handler.
     """
+    product_code = symbol.replace("/", "_")
+    executions_channel = f"lightning_executions_{product_code}"
+
     builder = CandleBuilder(symbol=symbol, timeframe=timeframe, on_candle_closed=on_candle_closed)
 
     logger.info(f"Warming up history ({history_candles} candles)...")
     await _fetch_history(exchange, symbol, builder, history_candles)
 
-    logger.info("Connecting to bitFlyer Realtime API...")
+    # Build the full channel -> handler map
+    handlers: dict[str, Callable] = {executions_channel: _make_executions_handler(builder)}
+    if extra_channels:
+        handlers.update(extra_channels)
+
+    logger.info(f"Connecting to bitFlyer Realtime API (channels: {list(handlers)})...")
+
     async for ws in websockets.connect(WS_URL, ping_interval=20, ping_timeout=10):
         try:
-            await ws.send(json.dumps({
-                "method": "subscribe",
-                "params": {"channel": f"lightning_executions_{PRODUCT_CODE}"},
-            }))
-            logger.info(f"Subscribed to lightning_executions_{PRODUCT_CODE}")
+            # Send all subscribe messages over the same connection
+            for channel in handlers:
+                await ws.send(json.dumps({
+                    "method": "subscribe",
+                    "params": {"channel": channel},
+                }))
+                logger.info(f"Subscribed to {channel}")
 
             async for message in ws:
                 data = json.loads(message)
-                executions = data.get("params", {}).get("message", [])
-                for ex in executions:
-                    exec_date = ex.get("exec_date", "")
-                    if exec_date:
-                        ts_ms = int(datetime.fromisoformat(exec_date.replace("Z", "+00:00")).timestamp() * 1000)
-                    else:
-                        ts_ms = int(time.time() * 1000)
-                    builder.feed(ex["price"], ex["size"], ts_ms)
+                channel = data.get("params", {}).get("channel", "")
+                handler = handlers.get(channel)
+                if handler:
+                    handler(data.get("params", {}).get("message", []))
 
         except websockets.ConnectionClosed:
             logger.warning("WebSocket disconnected, reconnecting...")
             continue
+
+
+def _make_executions_handler(builder: CandleBuilder) -> Callable:
+    """Return a handler that feeds execution events into the CandleBuilder."""
+    def handle(executions: list[dict]) -> None:
+        for ex in executions:
+            exec_date = ex.get("exec_date", "")
+            if exec_date:
+                ts_ms = int(datetime.fromisoformat(exec_date.replace("Z", "+00:00")).timestamp() * 1000)
+            else:
+                ts_ms = int(time.time() * 1000)
+            builder.feed(ex["price"], ex["size"], ts_ms)
+    return handle

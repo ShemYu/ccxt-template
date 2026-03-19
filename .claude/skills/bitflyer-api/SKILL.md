@@ -108,6 +108,11 @@ Implement in this order:
   * child order events
   * parent order events if needed
 
+Multiple subscriptions must share a single WebSocket connection (TCP).
+Do not open one connection per channel — send all `subscribe` messages
+over the same `websockets.connect()` session and dispatch incoming
+messages by channel name in a single read loop.
+
 ## Exchange-specific implementation notes
 
 ### 1. Product code handling
@@ -196,6 +201,29 @@ On startup:
 * reload unresolved orders from local persistence
 * query exchange state
 * reconcile diffs before resuming trading
+
+### 7. Realtime: single TCP connection for all subscriptions
+
+bitFlyer Realtime API uses JSON-RPC over WebSocket.
+All channel subscriptions must share one persistent connection:
+
+```python
+# Correct — one connection, multiple subscribe messages
+async with websockets.connect(WS_URL) as ws:
+    for channel in channels:
+        await ws.send(json.dumps({"method": "subscribe", "params": {"channel": channel}}))
+    async for message in ws:
+        data = json.loads(message)
+        channel = data.get("params", {}).get("channel", "")
+        dispatch(channel, data)
+
+# Wrong — one connection per channel
+for channel in channels:
+    asyncio.create_task(open_separate_connection(channel))  # don't do this
+```
+
+Dispatch by `params.channel` to the correct handler.
+This keeps resource usage flat regardless of how many channels you add.
 
 ## Coding rules for Claude
 
