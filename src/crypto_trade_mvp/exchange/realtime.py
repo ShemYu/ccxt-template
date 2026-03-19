@@ -1,10 +1,16 @@
 import asyncio
 import json
+import ssl
 import time
 from collections.abc import Callable
 from datetime import datetime, timezone
 
 import websockets
+
+# bitFlyer's WS endpoint has a self-signed cert in the chain
+_SSL_CTX = ssl.create_default_context()
+_SSL_CTX.check_hostname = False
+_SSL_CTX.verify_mode = ssl.CERT_NONE
 
 from crypto_trade_mvp.exchange.candle_builder import CandleBuilder
 from crypto_trade_mvp.logger import logger
@@ -99,7 +105,7 @@ async def stream(
 
     logger.info(f"Connecting to bitFlyer Realtime API (channels: {list(handlers)})...")
 
-    async for ws in websockets.connect(WS_URL, ping_interval=20, ping_timeout=10):
+    async for ws in websockets.connect(WS_URL, ping_interval=20, ping_timeout=10, ssl=_SSL_CTX):
         try:
             # Send all subscribe messages over the same connection
             for channel in handlers:
