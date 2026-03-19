@@ -1,0 +1,21 @@
+exchange:
+  name: bitflyer
+  sandbox: false
+
+trading:
+  default_symbol: "BTC/JPY"
+  default_timeframe: "5m"
+  initial_capital: 100000
+
+execution:
+  fee_bps: 10
+  slippage_bps: 5
+
+strategy:
+  sma_cross:
+    short_window: 5
+    long_window: 20
+
+logging:
+  level: INFO
+  rotation: "10 MB"
