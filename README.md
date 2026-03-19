@@ -1,99 +1,172 @@
 # ccxt-template
 
-A template for building algorithmic trading bots using CCXT, with exchange adapters, strategy scaffolding, and rate limiting out of the box.
+A template for building algorithmic trading bots on top of [CCXT](https://github.com/ccxt/ccxt).
+Ships with a working bitFlyer integration, SMA strategy, paper trading loop, and SQLite persistence.
 
-## Project Goal
+Use this as a starting point — swap the exchange, symbol, or strategy to fit your needs.
 
-Build a working crypto trading MVP — not a perfect platform. The goal is to have something running within a few evenings, then iterate.
+---
 
-## MVP Scope
+## What's inside
 
-First version supports only:
+```
+src/crypto_trade_mvp/
+├── exchange/
+│   ├── ccxt_client.py        # Base CCXT wrapper
+│   ├── bitflyer_adapter.py   # bitFlyer-specific overrides
+│   ├── candle_builder.py     # Builds K-bars from raw trades (exchange-agnostic)
+│   └── realtime.py           # WebSocket stream + REST history warm-up
+├── strategy/
+│   ├── base.py               # Strategy interface
+│   └── sma_cross.py          # SMA5/SMA20 crossover
+├── execution/
+│   └── simulator.py          # Paper broker (fee + slippage simulation)
+├── data/
+│   ├── fetcher.py            # Candle fetching
+│   ├── repository.py         # SQLite read/write
+│   └── schema.py             # SQLAlchemy models
+├── backtest/
+│   └── engine.py             # Backtesting engine
+└── cli/main.py               # CLI entry point
+```
 
-- **Exchange**: bitFlyer (or GMO Coin)
-- **Symbol**: `BTC/JPY`
-- **Timeframe**: `5m`
-- **Strategy**: SMA crossover (SMA5 / SMA20)
-- **Execution**: paper trading only
+---
 
-**Out of scope for v1:**
+## Quickstart
 
-- Real order execution
-- Multi-exchange arbitrage
-- High-frequency trading
-- Web dashboard
-- Complex strategy search
-- Distributed architecture
+### 1. Prerequisites
 
-## Setup
+- Python 3.11+
+- [uv](https://github.com/astral-sh/uv) — used for all dependency and runtime management
+
+### 2. Install
 
 ```bash
-# 1. Clone and enter the repo
 git clone https://github.com/ShemYu/ccxt-template.git
 cd ccxt-template
-
-# 2. Install dependencies (using uv)
 uv sync
+```
 
-# 3. Copy and fill in your env
+### 3. Configure
+
+```bash
 cp .env.example .env
+```
 
-# 4. Initialize the database
+Edit `.env`:
+
+```env
+EXCHANGE_NAME=bitflyer
+API_KEY=your_api_key
+API_SECRET=your_api_secret
+```
+
+### 4. Initialize the database
+
+```bash
 uv run python -m crypto_trade_mvp.cli.main init-db
 ```
 
-## Commands
+---
+
+## Usage
+
+### Paper trading (realtime)
+
+Streams live BTC/JPY trades from bitFlyer WebSocket, builds 5m candles on the fly,
+and runs SMA crossover to generate BUY/SELL/HOLD signals.
 
 ```bash
-# Fetch OHLCV candles and store to SQLite
-uv run python -m crypto_trade_mvp.cli.main fetch-data --symbol BTC/JPY --timeframe 5m --limit 300
-
-# Run strategy on stored candles and generate signals
-uv run python -m crypto_trade_mvp.cli.main run-strategy --symbol BTC/JPY --timeframe 5m --strategy sma_cross
-
-# Run a backtest on historical data
-uv run python -m crypto_trade_mvp.cli.main backtest --symbol BTC/JPY --timeframe 5m --strategy sma_cross
-
-# Start paper trading loop (polls every N seconds)
-uv run python -m crypto_trade_mvp.cli.main paper-trade --symbol BTC/JPY --timeframe 5m --interval 60
+uv run python -m crypto_trade_mvp.cli.main paper-trade --symbol BTC/JPY --timeframe 5m
 ```
 
-## Current Limitations
+On startup:
+1. Fetches recent trade history via REST to seed the candle window (warm-up)
+2. Connects to WebSocket and streams live executions
+3. Outputs signals and portfolio state each time a candle closes
 
-- Single exchange only (bitFlyer)
-- Single symbol only (BTC/JPY)
-- Single strategy only (SMA crossover)
-- Paper trading only — no real order execution
-- No web UI or dashboard
-- SQLite only (no cloud DB)
-- No multi-timeframe analysis
+### Fetch candles manually
+
+```bash
+uv run python -m crypto_trade_mvp.cli.main fetch-data --symbol BTC/JPY --timeframe 5m --limit 100
+```
+
+### Run strategy on stored candles
+
+```bash
+uv run python -m crypto_trade_mvp.cli.main run-strategy --symbol BTC/JPY --timeframe 5m --strategy sma_cross
+```
+
+### Backtest
+
+```bash
+uv run python -m crypto_trade_mvp.cli.main backtest --symbol BTC/JPY --timeframe 5m --strategy sma_cross
+```
+
+---
+
+## How to extend
+
+### Add a new exchange
+
+1. Create `src/crypto_trade_mvp/exchange/<exchange>_adapter.py`
+2. Subclass `CCXTClient`, override `fetch_ohlcv` if the exchange lacks a candle endpoint
+3. Update `.env` → `EXCHANGE_NAME=<ccxt_exchange_id>`
+
+### Add a new strategy
+
+1. Create `src/crypto_trade_mvp/strategy/<name>.py`
+2. Subclass `BaseStrategy`, implement `generate_signal(df) -> SignalType`
+3. Register in `cli/main.py` → `STRATEGIES` dict
+
+### Subscribe to additional WebSocket channels
+
+`realtime.stream()` accepts an `extra_channels` dict — all channels share one TCP connection:
+
+```python
+await stream(
+    exchange=adapter._exchange,
+    symbol="BTC/JPY",
+    timeframe="5m",
+    on_candle_closed=on_candle_closed,
+    extra_channels={
+        "lightning_ticker_BTC_JPY": handle_ticker,
+        "lightning_board_snapshot_BTC_JPY": handle_board,
+    },
+)
+```
+
+---
+
+## Architecture notes
+
+**Why build candles from trades?**
+bitFlyer does not expose a native OHLCV endpoint. `CandleBuilder` accumulates
+raw executions into K-bars locally. It is transport-agnostic — works with both
+REST-fetched history and live WebSocket events.
+
+**Why share one WebSocket connection?**
+All channel subscriptions run over a single TCP connection. Adding more channels
+(ticker, board, private order events) does not open additional connections —
+just send more `subscribe` messages and add handlers to the dispatch map.
+
+**Layer separation**
+Data layer (WS/REST) → Strategy layer → Execution layer are kept independent.
+This makes it straightforward to swap transports (e.g. replace polling with
+event-driven), add message queues, or deploy layers separately on Cloud Run.
+
+---
 
 ## Milestones
 
-### Milestone 1 — Data
-- Fetch OHLCV candles from exchange
-- Store to SQLite
-- Print dataframe to console
+See [MILESTONES.md](./MILESTONES.md) for current progress.
 
-### Milestone 2 — Signal
-- Run SMA crossover strategy
-- Output BUY / SELL / HOLD signals
+---
 
-### Milestone 3 — Execution
-- Simulate trades based on signals
-- Track cash, position, PnL
+## Contributing
 
-### Milestone 4 — Loop
-- Run paper trading via CLI on a timed interval
-- Structured logging to file
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-### Milestone 5 — Reporting
-- Output simple backtest report (total return, win rate, trade count)
+## License
 
-## Next Steps (Post-MVP)
-
-- Add more strategies (RSI, Bollinger Bands)
-- Add real order execution interface
-- Support multiple symbols
-- Upgrade storage to PostgreSQL
-- Add simple HTML report output
+MIT — see [LICENSE](./LICENSE).

@@ -1,25 +1,30 @@
-# Milestones — crypto-trade-mvp
+# Milestones — ccxt-template
 
 ## Milestone 1 — Data
-- [ ] Fetch OHLCV candles via ccxt
-- [ ] Store candles to SQLite
-- [ ] Print dataframe to console
+- [x] Fetch OHLCV candles from exchange
+- [x] Store candles to SQLite
+- [x] Print dataframe to console
+- [x] Build OHLCV from raw trades (bitFlyer workaround — no native candle endpoint)
 
 ## Milestone 2 — Signal
-- [ ] Implement SMA crossover strategy
-- [ ] Output BUY / SELL / HOLD signals
+- [x] Implement SMA crossover strategy (SMA5 / SMA20)
+- [x] Output BUY / SELL / HOLD signals
 - [ ] Store signals to SQLite
 
 ## Milestone 3 — Execution
-- [ ] Simulate market orders based on signals
-- [ ] Apply fee and slippage
-- [ ] Track cash, position size, avg entry price
-- [ ] Calculate unrealized and realized PnL
+- [x] Simulate market orders based on signals
+- [x] Apply fee and slippage
+- [x] Track cash, position size, avg entry price
+- [x] Calculate unrealized and realized PnL
 
 ## Milestone 4 — Loop
-- [ ] Run paper trading via CLI on a timed interval
+- [x] Realtime paper trading via bitFlyer WebSocket (lightning_executions)
+- [x] REST history warm-up before WebSocket starts (seed candle window)
+- [x] CandleBuilder: accumulate raw trades into K-bars, exchange-transport agnostic
+- [x] Single TCP connection for all WebSocket channel subscriptions
+- [x] Auto-reconnect on disconnect
 - [ ] Structured logging to `logs/` directory
 
 ## Milestone 5 — Reporting
-- [ ] Backtest on historical candle data
-- [ ] Output summary: total return, win rate, trade count, max drawdown
+- [x] Backtest engine skeleton
+- [ ] Full backtest report: total return, win rate, trade count, max drawdown
