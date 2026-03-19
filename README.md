@@ -1,6 +1,6 @@
-# crypto-trade-mvp
+# ccxt-template
 
-A minimal crypto quant trading system for market data collection, signal generation, paper trading, and backtesting.
+A template for building algorithmic trading bots using CCXT, with exchange adapters, strategy scaffolding, and rate limiting out of the box.
 
 ## Project Goal
 
@@ -29,8 +29,8 @@ First version supports only:
 
 ```bash
 # 1. Clone and enter the repo
-git clone <repo-url>
-cd crypto-trade-mvp
+git clone https://github.com/ShemYu/ccxt-template.git
+cd ccxt-template
 
 # 2. Install dependencies (using uv)
 uv sync
