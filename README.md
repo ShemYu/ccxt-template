@@ -10,7 +10,7 @@ Use this as a starting point — swap the exchange, symbol, or strategy to fit y
 ## What's inside
 
 ```
-src/crypto_trade_mvp/
+src/ccxt_template/
 ├── exchange/
 │   ├── ccxt_client.py        # Base CCXT wrapper
 │   ├── bitflyer_adapter.py   # bitFlyer-specific overrides
@@ -64,7 +64,7 @@ API_SECRET=your_api_secret
 ### 4. Initialize the database
 
 ```bash
-uv run python -m crypto_trade_mvp.cli.main init-db
+uv run python -m ccxt_template.cli.main init-db
 ```
 
 ---
@@ -77,7 +77,7 @@ Streams live BTC/JPY trades from bitFlyer WebSocket, builds 5m candles on the fl
 and runs SMA crossover to generate BUY/SELL/HOLD signals.
 
 ```bash
-uv run python -m crypto_trade_mvp.cli.main paper-trade --symbol BTC/JPY --timeframe 5m
+uv run python -m ccxt_template.cli.main paper-trade --symbol BTC/JPY --timeframe 5m
 ```
 
 On startup:
@@ -88,19 +88,19 @@ On startup:
 ### Fetch candles manually
 
 ```bash
-uv run python -m crypto_trade_mvp.cli.main fetch-data --symbol BTC/JPY --timeframe 5m --limit 100
+uv run python -m ccxt_template.cli.main fetch-data --symbol BTC/JPY --timeframe 5m --limit 100
 ```
 
 ### Run strategy on stored candles
 
 ```bash
-uv run python -m crypto_trade_mvp.cli.main run-strategy --symbol BTC/JPY --timeframe 5m --strategy sma_cross
+uv run python -m ccxt_template.cli.main run-strategy --symbol BTC/JPY --timeframe 5m --strategy sma_cross
 ```
 
 ### Backtest
 
 ```bash
-uv run python -m crypto_trade_mvp.cli.main backtest --symbol BTC/JPY --timeframe 5m --strategy sma_cross
+uv run python -m ccxt_template.cli.main backtest --symbol BTC/JPY --timeframe 5m --strategy sma_cross
 ```
 
 ---
@@ -109,13 +109,13 @@ uv run python -m crypto_trade_mvp.cli.main backtest --symbol BTC/JPY --timeframe
 
 ### Add a new exchange
 
-1. Create `src/crypto_trade_mvp/exchange/<exchange>_adapter.py`
+1. Create `src/ccxt_template/exchange/<exchange>_adapter.py`
 2. Subclass `CCXTClient`, override `fetch_ohlcv` if the exchange lacks a candle endpoint
 3. Update `.env` → `EXCHANGE_NAME=<ccxt_exchange_id>`
 
 ### Add a new strategy
 
-1. Create `src/crypto_trade_mvp/strategy/<name>.py`
+1. Create `src/ccxt_template/strategy/<name>.py`
 2. Subclass `BaseStrategy`, implement `generate_signal(df) -> SignalType`
 3. Register in `cli/main.py` → `STRATEGIES` dict
 

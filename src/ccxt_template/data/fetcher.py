@@ -1,7 +1,7 @@
 import pandas as pd
-from crypto_trade_mvp.exchange.base import ExchangeAdapter
-from crypto_trade_mvp.models.candle import Candle
-from crypto_trade_mvp.logger import logger
+from ccxt_template.exchange.base import ExchangeAdapter
+from ccxt_template.models.candle import Candle
+from ccxt_template.logger import logger
 
 
 class DataFetcher:

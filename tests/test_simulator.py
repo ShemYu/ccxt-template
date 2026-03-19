@@ -1,5 +1,5 @@
 import pytest
-from crypto_trade_mvp.execution.simulator import PaperBroker
+from ccxt_template.execution.simulator import PaperBroker
 
 
 def test_initial_state():

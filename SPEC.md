@@ -34,7 +34,7 @@ crypto-trade-mvp/
 │   ├── run_backtest.py
 │   └── run_paper.py
 ├── src/
-│   └── crypto_trade_mvp/
+│   └── ccxt_template/
 │       ├── __init__.py
 │       ├── config.py
 │       ├── logger.py
@@ -192,16 +192,16 @@ class PaperBroker:
 ## CLI Commands
 
 ```bash
-python -m crypto_trade_mvp.cli.main fetch-data \
+python -m ccxt_template.cli.main fetch-data \
   --symbol BTC/JPY --timeframe 5m --limit 300
 
-python -m crypto_trade_mvp.cli.main run-strategy \
+python -m ccxt_template.cli.main run-strategy \
   --symbol BTC/JPY --timeframe 5m --strategy sma_cross
 
-python -m crypto_trade_mvp.cli.main backtest \
+python -m ccxt_template.cli.main backtest \
   --symbol BTC/JPY --timeframe 5m --strategy sma_cross
 
-python -m crypto_trade_mvp.cli.main paper-trade \
+python -m ccxt_template.cli.main paper-trade \
   --symbol BTC/JPY --timeframe 5m --interval 60
 ```
 

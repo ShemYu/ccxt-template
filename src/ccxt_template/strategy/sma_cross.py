@@ -1,6 +1,6 @@
 import pandas as pd
-from crypto_trade_mvp.models.signal import SignalType
-from crypto_trade_mvp.logger import logger
+from ccxt_template.models.signal import SignalType
+from ccxt_template.logger import logger
 
 
 class SMACrossStrategy:

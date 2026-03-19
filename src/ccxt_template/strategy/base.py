@@ -1,6 +1,6 @@
 from typing import Protocol
 import pandas as pd
-from crypto_trade_mvp.models.signal import SignalType
+from ccxt_template.models.signal import SignalType
 
 
 class Strategy(Protocol):

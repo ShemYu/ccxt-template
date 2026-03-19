@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, Float, Text, create_engine
 from sqlalchemy.orm import DeclarativeBase
-from crypto_trade_mvp.config import settings
+from ccxt_template.config import settings
 
 
 class Base(DeclarativeBase):

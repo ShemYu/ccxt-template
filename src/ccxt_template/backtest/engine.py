@@ -1,9 +1,9 @@
 import pandas as pd
-from crypto_trade_mvp.strategy.base import Strategy
-from crypto_trade_mvp.execution.simulator import PaperBroker
-from crypto_trade_mvp.models.signal import SignalType
-from crypto_trade_mvp.config import settings
-from crypto_trade_mvp.logger import logger
+from ccxt_template.strategy.base import Strategy
+from ccxt_template.execution.simulator import PaperBroker
+from ccxt_template.models.signal import SignalType
+from ccxt_template.config import settings
+from ccxt_template.logger import logger
 
 
 class BacktestEngine:

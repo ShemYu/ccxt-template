@@ -12,8 +12,8 @@ _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False
 _SSL_CTX.verify_mode = ssl.CERT_NONE
 
-from crypto_trade_mvp.exchange.candle_builder import CandleBuilder
-from crypto_trade_mvp.logger import logger
+from ccxt_template.exchange.candle_builder import CandleBuilder
+from ccxt_template.logger import logger
 
 WS_URL = "wss://ws.lightstream.bitflyer.com/json-rpc"
 
@@ -27,7 +27,7 @@ async def _fetch_history(
     Callbacks are suppressed during feed; the completed candles are returned
     so the caller can seed its own state before WS starts.
     """
-    from crypto_trade_mvp.models.candle import Candle
+    from ccxt_template.models.candle import Candle
 
     interval_ms = builder._interval_ms
     needed_ms = target_candles * interval_ms

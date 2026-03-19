@@ -1,12 +1,12 @@
 from sqlalchemy.orm import Session
-from crypto_trade_mvp.data.schema import (
+from ccxt_template.data.schema import (
     CandleRow, SignalRow, OrderRow, PositionRow, PortfolioSnapshotRow, get_engine
 )
-from crypto_trade_mvp.models.candle import Candle
-from crypto_trade_mvp.models.signal import Signal
-from crypto_trade_mvp.models.order import Order
-from crypto_trade_mvp.models.position import Position
-from crypto_trade_mvp.models.portfolio import PortfolioSnapshot
+from ccxt_template.models.candle import Candle
+from ccxt_template.models.signal import Signal
+from ccxt_template.models.order import Order
+from ccxt_template.models.position import Position
+from ccxt_template.models.portfolio import PortfolioSnapshot
 
 
 class Repository:

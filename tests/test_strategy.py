@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
-from crypto_trade_mvp.strategy.sma_cross import SMACrossStrategy
-from crypto_trade_mvp.models.signal import SignalType
+from ccxt_template.strategy.sma_cross import SMACrossStrategy
+from ccxt_template.models.signal import SignalType
 
 
 def make_df(closes: list[float]) -> pd.DataFrame:

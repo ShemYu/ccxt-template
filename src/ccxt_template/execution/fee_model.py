@@ -1,4 +1,4 @@
-from crypto_trade_mvp.config import settings
+from ccxt_template.config import settings
 
 
 class FeeModel:

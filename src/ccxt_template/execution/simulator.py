@@ -1,9 +1,9 @@
-from crypto_trade_mvp.models.order import Order, OrderSide, OrderStatus
-from crypto_trade_mvp.models.position import Position
-from crypto_trade_mvp.models.portfolio import PortfolioSnapshot
-from crypto_trade_mvp.execution.fee_model import FeeModel
-from crypto_trade_mvp.config import settings
-from crypto_trade_mvp.logger import logger
+from ccxt_template.models.order import Order, OrderSide, OrderStatus
+from ccxt_template.models.position import Position
+from ccxt_template.models.portfolio import PortfolioSnapshot
+from ccxt_template.execution.fee_model import FeeModel
+from ccxt_template.config import settings
+from ccxt_template.logger import logger
 
 
 class PaperBroker:

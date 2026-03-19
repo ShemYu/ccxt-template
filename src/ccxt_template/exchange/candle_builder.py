@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from crypto_trade_mvp.models.candle import Candle
-from crypto_trade_mvp.logger import logger
+from ccxt_template.models.candle import Candle
+from ccxt_template.logger import logger
 
 TIMEFRAME_SECONDS = {
     "1m": 60,

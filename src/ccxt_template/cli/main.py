@@ -2,21 +2,21 @@ import asyncio
 import time
 import typer
 import pandas as pd
-from crypto_trade_mvp.config import settings
-from crypto_trade_mvp.logger import logger
-from crypto_trade_mvp.data.schema import init_db
-from crypto_trade_mvp.data.fetcher import DataFetcher
-from crypto_trade_mvp.data.repository import Repository
-from crypto_trade_mvp.exchange.bitflyer_adapter import BitflyerAdapter
-from crypto_trade_mvp.exchange.realtime import stream
-from crypto_trade_mvp.models.candle import Candle
-from crypto_trade_mvp.strategy.sma_cross import SMACrossStrategy
-from crypto_trade_mvp.execution.simulator import PaperBroker
-from crypto_trade_mvp.portfolio.manager import PortfolioManager
-from crypto_trade_mvp.backtest.engine import BacktestEngine
-from crypto_trade_mvp.models.signal import SignalType
+from ccxt_template.config import settings
+from ccxt_template.logger import logger
+from ccxt_template.data.schema import init_db
+from ccxt_template.data.fetcher import DataFetcher
+from ccxt_template.data.repository import Repository
+from ccxt_template.exchange.bitflyer_adapter import BitflyerAdapter
+from ccxt_template.exchange.realtime import stream
+from ccxt_template.models.candle import Candle
+from ccxt_template.strategy.sma_cross import SMACrossStrategy
+from ccxt_template.execution.simulator import PaperBroker
+from ccxt_template.portfolio.manager import PortfolioManager
+from ccxt_template.backtest.engine import BacktestEngine
+from ccxt_template.models.signal import SignalType
 
-app = typer.Typer(help="crypto-trade-mvp CLI")
+app = typer.Typer(help="ccxt-template CLI")
 
 STRATEGIES = {
     "sma_cross": SMACrossStrategy(),
@@ -116,7 +116,7 @@ def paper_trade(
     timeframe: str = typer.Option(settings.default_timeframe),
 ):
     """Run paper trading loop driven by bitFlyer Realtime API."""
-    from crypto_trade_mvp.data.schema import init_db as _init_db
+    from ccxt_template.data.schema import init_db as _init_db
     _init_db()
 
     adapter = BitflyerAdapter()
@@ -170,7 +170,7 @@ def paper_trade(
 @app.command()
 def init_db():
     """Initialize the SQLite database schema."""
-    from crypto_trade_mvp.data.schema import init_db as _init_db
+    from ccxt_template.data.schema import init_db as _init_db
     _init_db()
     typer.echo("Database initialized.")
 

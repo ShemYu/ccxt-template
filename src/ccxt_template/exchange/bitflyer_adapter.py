@@ -1,4 +1,4 @@
-from crypto_trade_mvp.exchange.ccxt_client import CCXTClient
+from ccxt_template.exchange.ccxt_client import CCXTClient
 
 
 class BitflyerAdapter(CCXTClient):

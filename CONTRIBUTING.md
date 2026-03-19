@@ -19,8 +19,8 @@ uv sync
 
 ## What to contribute
 
-- New exchange adapters under `src/crypto_trade_mvp/exchange/`
-- New strategy examples under `src/crypto_trade_mvp/strategy/`
+- New exchange adapters under `src/ccxt_template/exchange/`
+- New strategy examples under `src/ccxt_template/strategy/`
 - Bug fixes, test coverage, and documentation improvements
 
 ## Code style

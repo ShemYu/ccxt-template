@@ -1,6 +1,6 @@
-from crypto_trade_mvp.execution.simulator import PaperBroker
-from crypto_trade_mvp.data.repository import Repository
-from crypto_trade_mvp.logger import logger
+from ccxt_template.execution.simulator import PaperBroker
+from ccxt_template.data.repository import Repository
+from ccxt_template.logger import logger
 
 
 class PortfolioManager:

@@ -1,7 +1,7 @@
 import ccxt
 import pandas as pd
-from crypto_trade_mvp.config import settings
-from crypto_trade_mvp.logger import logger
+from ccxt_template.config import settings
+from ccxt_template.logger import logger
 
 TIMEFRAME_TO_PANDAS = {
     "1m": "1min",
