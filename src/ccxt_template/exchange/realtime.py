@@ -80,6 +80,7 @@ async def stream(
     symbol: str,
     timeframe: str,
     on_candle_closed: Callable,
+    on_seed_candle: Callable | None = None,
     history_candles: int = 25,
     extra_channels: dict[str, Callable] | None = None,
 ) -> None:
@@ -90,10 +91,15 @@ async def stream(
     (e.g. ticker, board). The executions channel for `symbol` is always
     included and drives the CandleBuilder.
 
+    `on_seed_candle` receives historical warm-up candles (no trading).
+    `on_candle_closed` receives live candles only (triggers strategy).
+    If `on_seed_candle` is not provided, seed candles are silently discarded.
+
     Workflow:
     1. Warm up with REST history to fill `history_candles` worth of candles.
-    2. Open one WebSocket, subscribe to all channels in a single session.
-    3. Dispatch incoming messages by channel name to the correct handler.
+    2. Deliver seeded candles via on_seed_candle.
+    3. Open one WebSocket, subscribe to all channels in a single session.
+    4. Dispatch incoming messages by channel name to the correct handler.
     """
     product_code = symbol.replace("/", "_")
     executions_channel = f"lightning_executions_{product_code}"
@@ -102,8 +108,9 @@ async def stream(
 
     logger.info(f"Warming up history ({history_candles} candles)...")
     seeded = await _fetch_history(exchange, symbol, builder, history_candles)
+    seed_handler = on_seed_candle or (lambda c: None)
     for candle in seeded:
-        on_candle_closed(candle)
+        seed_handler(candle)
 
     # Build the full channel -> handler map
     handlers: dict[str, Callable] = {executions_channel: _make_executions_handler(builder)}

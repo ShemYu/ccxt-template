@@ -125,15 +125,32 @@ def paper_trade(
     pm = PortfolioManager(broker=broker, repo=repo)
     strat = SMACrossStrategy()
     candle_window: list[Candle] = []
+    seen_ts: set[int] = set()
 
-    def on_candle_closed(candle: Candle) -> None:
-        repo.save_candles([candle])
+    def _append(candle: Candle) -> None:
+        """Add candle to window, deduplicating by timestamp."""
+        if candle.timestamp in seen_ts:
+            logger.warning(f"Duplicate candle ts={candle.timestamp} ignored")
+            return
+        seen_ts.add(candle.timestamp)
         candle_window.append(candle)
         if len(candle_window) > 300:
-            candle_window.pop(0)
+            removed = candle_window.pop(0)
+            seen_ts.discard(removed.timestamp)
+
+    def on_seed_candle(candle: Candle) -> None:
+        """Seed candles initialize the indicator window only — no trading."""
+        repo.save_candles([candle])
+        _append(candle)
+        logger.info(f"source=seed ts={candle.timestamp} close={candle.close} window={len(candle_window)}")
+
+    def on_live_candle(candle: Candle) -> None:
+        """Live candles drive trading decisions."""
+        repo.save_candles([candle])
+        _append(candle)
 
         if len(candle_window) < 20:
-            logger.info(f"Warming up: {len(candle_window)}/20 candles")
+            logger.info(f"source=live ts={candle.timestamp} close={candle.close} warming_up={len(candle_window)}/20")
             return
 
         df = pd.DataFrame([
@@ -155,14 +172,15 @@ def paper_trade(
                 repo.save_order(order)
 
         pm.snapshot()
-        typer.echo(f"[{candle_window[-1].timestamp}] signal={signal.value} price={current_price}")
+        logger.info(f"source=live ts={candle.timestamp} close={current_price} signal={signal.value}")
 
     typer.echo(f"Starting realtime paper trading for {symbol} [{timeframe}]")
     asyncio.run(stream(
         exchange=adapter._exchange,
         symbol=symbol,
         timeframe=timeframe,
-        on_candle_closed=on_candle_closed,
+        on_candle_closed=on_live_candle,
+        on_seed_candle=on_seed_candle,
         history_candles=25,
     ))
 

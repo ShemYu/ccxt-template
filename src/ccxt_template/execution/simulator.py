@@ -24,28 +24,48 @@ class PaperBroker:
             logger.warning("SELL ignored: no open position")
             return None
 
-        exec_price, fee, slippage = self._fee_model.apply(price, side)
+        fee_rate = self._fee_model.fee_bps / 10000
+        slippage_rate = self._fee_model.slippage_bps / 10000
 
         if order_side == OrderSide.BUY:
-            size = self.cash / exec_price
-            cost = self.cash
+            exec_price = price * (1 + slippage_rate)
+            # size must account for fee so total spend = cash exactly
+            # cash = size * exec_price * (1 + fee_rate)
+            size = self.cash / (exec_price * (1 + fee_rate))
+            notional = size * exec_price
+            fee = notional * fee_rate
+            slippage = price * slippage_rate
+            cash_before = self.cash
             self.cash = 0.0
             self.position.size = size
             self.position.avg_entry_price = exec_price
-            logger.info(f"BUY {size:.6f} @ {exec_price:.2f} | fee={fee:.2f}")
+            logger.info(
+                f"BUY  qty={size:.6f} price={price:.0f} exec={exec_price:.0f} "
+                f"notional={notional:.2f} fee_rate={fee_rate:.4f} fee={fee:.2f} "
+                f"cash_before={cash_before:.2f} cash_after=0.00"
+            )
         else:
+            exec_price = price * (1 - slippage_rate)
             size = self.position.size
-            proceeds = size * exec_price - fee
+            notional = size * exec_price
+            fee = notional * fee_rate
+            slippage = price * slippage_rate
+            proceeds = notional - fee
+            cash_before = self.cash
             self.position.realized_pnl += proceeds - (size * self.position.avg_entry_price)
             self.cash = proceeds
             self.position.size = 0.0
             self.position.avg_entry_price = 0.0
-            logger.info(f"SELL {size:.6f} @ {exec_price:.2f} | fee={fee:.2f}")
+            logger.info(
+                f"SELL qty={size:.6f} price={price:.0f} exec={exec_price:.0f} "
+                f"notional={notional:.2f} fee_rate={fee_rate:.4f} fee={fee:.2f} "
+                f"cash_before={cash_before:.2f} cash_after={self.cash:.2f}"
+            )
 
         order = Order(
             symbol=self.symbol, side=order_side,
             price=exec_price, size=size,
-            fee=fee, slippage=slippage,
+            fee=fee, slippage=slippage * size,
             status=OrderStatus.FILLED,
         )
         self._orders.append(order)
